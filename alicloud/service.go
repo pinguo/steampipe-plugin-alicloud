@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk"
@@ -57,6 +58,10 @@ func AliDNSService(ctx context.Context, d *plugin.QueryData) (*alidns.Client, er
 		return nil, err
 	}
 
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
 
@@ -88,6 +93,10 @@ func AutoscalingService(ctx context.Context, d *plugin.QueryData) (*ess.Client, 
 		return nil, err
 	}
 
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
 
@@ -116,6 +125,10 @@ func CasService(ctx context.Context, d *plugin.QueryData, region string) (*cas.C
 	if err != nil {
 		return nil, err
 	}
+
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
 
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
@@ -148,6 +161,10 @@ func CmsService(ctx context.Context, d *plugin.QueryData) (*cms.Client, error) {
 		return nil, err
 	}
 
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
 
@@ -179,6 +196,10 @@ func ECSService(ctx context.Context, d *plugin.QueryData) (*ecs.Client, error) {
 		return nil, err
 	}
 
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
 
@@ -207,6 +228,10 @@ func ECSRegionService(ctx context.Context, d *plugin.QueryData, region string) (
 	if err != nil {
 		return nil, err
 	}
+
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
 
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
@@ -239,6 +264,10 @@ func KMSService(ctx context.Context, d *plugin.QueryData) (*kms.Client, error) {
 		return nil, err
 	}
 
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
 
@@ -266,6 +295,10 @@ func RAMService(ctx context.Context, d *plugin.QueryData) (*ram.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
 
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
@@ -295,6 +328,10 @@ func SLBService(ctx context.Context, d *plugin.QueryData) (*slb.Client, error) {
 		return nil, err
 	}
 
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
 
@@ -321,6 +358,10 @@ func StsService(ctx context.Context, d *plugin.QueryData) (*sts.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
 
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
@@ -352,6 +393,10 @@ func VpcService(ctx context.Context, d *plugin.QueryData) (*vpc.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
 
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
@@ -437,6 +482,10 @@ func ActionTrailService(ctx context.Context, d *plugin.QueryData) (*actiontrail.
 		return nil, err
 	}
 
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
 
@@ -468,6 +517,10 @@ func ContainerService(ctx context.Context, d *plugin.QueryData) (*cs.Client, err
 		return nil, err
 	}
 
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
 
@@ -498,6 +551,10 @@ func SecurityCenterService(ctx context.Context, d *plugin.QueryData, region stri
 		return nil, err
 	}
 
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
 
@@ -526,6 +583,11 @@ func RDSService(ctx context.Context, d *plugin.QueryData, region string) (*rds.C
 	if err != nil {
 		return nil, err
 	}
+
+	// Set default read/connect timeout to 60s if not configured
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
 
 	// cache the service connection
 	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
@@ -684,6 +746,21 @@ type CredentialConfig struct {
 	Config        *sdk.Config
 }
 
+// getClientTimeout returns the configured timeout or 60s default
+func getClientTimeout(d *plugin.QueryData) time.Duration {
+	// Priority: connection config > environment variable > default (60s)
+	config := GetConfig(d.Connection)
+	if config.Timeout != nil {
+		return time.Duration(*config.Timeout) * time.Second
+	}
+	if envTimeout := os.Getenv("STEAMPIPE_ALICLOUD_TIMEOUT"); envTimeout != "" {
+		if seconds, err := strconv.Atoi(envTimeout); err == nil && seconds > 0 {
+			return time.Duration(seconds) * time.Second
+		}
+	}
+	return 60 * time.Second
+}
+
 // Get credential from the profile configuration for Alicloud CLI
 func getProfileConfigurations(_ context.Context, d *plugin.QueryData) (*CredentialConfig, error) {
 	alicloudConfig := GetConfig(d.Connection)
@@ -711,6 +788,8 @@ func getCredentialConfigByProfile(profile string, d *plugin.QueryData) (*Credent
 	}
 	if config.Timeout != nil {
 		defaultConfig = defaultConfig.WithTimeout(time.Duration(*config.Timeout) * time.Second)
+	} else {
+		defaultConfig = defaultConfig.WithTimeout(60 * time.Second)
 	}
 
 	// We will get a nil value if the specified profile is not available
@@ -741,6 +820,8 @@ func getCredentialSessionUncached(ctx context.Context, d *plugin.QueryData, h *p
 	}
 	if config.Timeout != nil {
 		defaultConfig = defaultConfig.WithTimeout(time.Duration(*config.Timeout) * time.Second)
+	} else {
+		defaultConfig = defaultConfig.WithTimeout(60 * time.Second)
 	}
 
 	// Profile based client
