@@ -421,10 +421,13 @@ func OssService(ctx context.Context, d *plugin.QueryData, region string) (*oss.C
 	endpoint := "oss-" + region + ".aliyuncs.com"
 
 	// Initialize OSS client configuration
+	timeout := getClientTimeout(d)
 	ossCfg := oss.NewConfig()
 	ossCfg.WithEndpoint(endpoint)
 	ossCfg.WithRegion(region)
 	ossCfg.WithProxyFromEnvironment(true)
+	ossCfg.WithConnectTimeout(timeout)
+	ossCfg.WithReadWriteTimeout(timeout)
 
 	// Retrieve cached credentials for authentication
 	credCfg, err := getCredentialSessionCached(ctx, d, nil)
