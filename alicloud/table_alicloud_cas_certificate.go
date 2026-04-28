@@ -40,7 +40,7 @@ func tableAlicloudUserCertificate(ctx context.Context) *plugin.Table {
 			{
 				Name:        "id",
 				Description: "The ID of the certificate.",
-				Type:        proto.ColumnType_DOUBLE,
+				Type:        proto.ColumnType_INT,
 			},
 			{
 				Name:        "org_name",
@@ -172,6 +172,7 @@ func listUserCertificate(ctx context.Context, d *plugin.QueryData, _ *plugin.Hyd
 	request := cas.CreateListUserCertificateOrderRequest()
 	request.ShowSize = "50"
 	request.CurrentPage = "1"
+	request.OrderType = "CERT"
 	request.QueryParams["RegionId"] = region
 
 	count := 0
