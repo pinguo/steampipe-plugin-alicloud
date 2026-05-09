@@ -12,6 +12,7 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/actiontrail"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/alikafka"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/bssopenapi"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/cas"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/cms"
@@ -56,6 +57,42 @@ func AliDNSService(ctx context.Context, d *plugin.QueryData) (*alidns.Client, er
 
 	// so it was not in cache - create service
 	svc, err := alidns.NewClientWithOptions(region, cfg.Config, cfg.Creds)
+	if err != nil {
+		return nil, err
+	}
+
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
+	// cache the service connection
+	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
+
+	return svc, nil
+}
+
+// AlikafkaService returns the service connection for Alicloud Kafka service
+func AlikafkaService(ctx context.Context, d *plugin.QueryData) (*alikafka.Client, error) {
+	region := d.EqualsQualString(matrixKeyRegion)
+
+	if region == "" {
+		return nil, fmt.Errorf("region must be passed AlikafkaService")
+	}
+
+	// have we already created and cached the service?
+	serviceCacheKey := fmt.Sprintf("alikafka-%s", region)
+	if cachedData, ok := d.ConnectionManager.Cache.Get(serviceCacheKey); ok {
+		return cachedData.(*alikafka.Client), nil
+	}
+
+	credCfg, err := getCredentialSessionCached(ctx, d, nil)
+	if err != nil {
+		return nil, err
+	}
+	cfg := credCfg.(*CredentialConfig)
+
+	// so it was not in cache - create service
+	svc, err := alikafka.NewClientWithOptions(region, cfg.Config, cfg.Creds)
 	if err != nil {
 		return nil, err
 	}
