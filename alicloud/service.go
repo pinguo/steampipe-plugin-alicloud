@@ -19,6 +19,7 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/ecs"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/ess"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/kms"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/r_kvstore"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/ram"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/rds"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/sas"
@@ -531,7 +532,11 @@ func ActionTrailService(ctx context.Context, d *plugin.QueryData) (*actiontrail.
 // ContainerService returns the service connection for Alicloud Container service
 func ContainerService(ctx context.Context, d *plugin.QueryData) (*cs.Client, error) {
 	region := GetDefaultRegion(d.Connection)
+	return ContainerServiceWithRegion(ctx, d, region)
+}
 
+// ContainerServiceWithRegion returns the service connection for Alicloud Container service with a specific region
+func ContainerServiceWithRegion(ctx context.Context, d *plugin.QueryData, region string) (*cs.Client, error) {
 	if region == "" {
 		return nil, fmt.Errorf("region must be passed ContainerService")
 	}
@@ -621,6 +626,39 @@ func RDSService(ctx context.Context, d *plugin.QueryData, region string) (*rds.C
 	}
 
 	// Set default read/connect timeout to 60s if not configured
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
+	// cache the service connection
+	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
+
+	return svc, nil
+}
+
+// RedisService returns the service connection for Alicloud Redis (R-KVStore) service
+func RedisService(ctx context.Context, d *plugin.QueryData, region string) (*r_kvstore.Client, error) {
+	if region == "" {
+		return nil, fmt.Errorf("region must be passed RedisService")
+	}
+	// have we already created and cached the service?
+	serviceCacheKey := fmt.Sprintf("redis-%s", region)
+	if cachedData, ok := d.ConnectionManager.Cache.Get(serviceCacheKey); ok {
+		return cachedData.(*r_kvstore.Client), nil
+	}
+
+	credCfg, err := getCredentialSessionCached(ctx, d, nil)
+	if err != nil {
+		return nil, err
+	}
+	cfg := credCfg.(*CredentialConfig)
+
+	// so it was not in cache - create service
+	svc, err := r_kvstore.NewClientWithOptions(region, cfg.Config, cfg.Creds)
+	if err != nil {
+		return nil, err
+	}
+
 	timeout := getClientTimeout(d)
 	svc.SetReadTimeout(timeout)
 	svc.SetConnectTimeout(timeout)

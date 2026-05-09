@@ -75,6 +75,7 @@ func Plugin(ctx context.Context) *plugin.Plugin {
 			"alicloud_rds_backup":                                 tableAlicloudRdsBackup(ctx),
 			"alicloud_rds_database":                               tableAlicloudRdsDatabase(ctx),
 			"alicloud_rds_instance":                               tableAlicloudRdsInstance(ctx),
+			"alicloud_redis_instance":                             tableAlicloudRedisInstance(ctx),
 			"alicloud_rds_instance_metric_connections":            tableAlicloudRdsInstanceMetricConnections(ctx),
 			"alicloud_rds_instance_metric_connections_daily":      tableAlicloudRdsInstanceMetricConnectionsDaily(ctx),
 			"alicloud_rds_instance_metric_cpu_utilization":        tableAlicloudRdsInstanceMetricCpuUtilization(ctx),

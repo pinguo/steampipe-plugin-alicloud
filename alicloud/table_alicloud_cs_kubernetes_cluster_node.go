@@ -2,6 +2,7 @@ package alicloud
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/errors"
@@ -171,33 +172,59 @@ type NodeInfo struct {
 //// LIST FUNCTION
 
 func listCsKubernetesClusterNodes(ctx context.Context, d *plugin.QueryData, h *plugin.HydrateData) (interface{}, error) {
-	// Create service connection
-	client, err := ContainerService(ctx, d)
+	clusterData := h.Item.(map[string]interface{})
+	clusterId := clusterData["cluster_id"].(string)
+
+	// Get the region from the parent cluster data to ensure we call the correct regional endpoint
+	clusterRegion := ""
+	if regionId, ok := clusterData["region_id"]; ok && regionId != nil {
+		clusterRegion = regionId.(string)
+	}
+
+	// Create service connection using the cluster's region
+	var client *cs.Client
+	var err error
+	if clusterRegion != "" {
+		client, err = ContainerServiceWithRegion(ctx, d, clusterRegion)
+	} else {
+		client, err = ContainerService(ctx, d)
+	}
 	if err != nil {
 		plugin.Logger(ctx).Error("listCsKubernetesClusterNodes", "connection_error", err)
 		return nil, err
 	}
 
-	clusterId := h.Item.(map[string]interface{})["cluster_id"].(string)
 	request := cs.CreateDescribeClusterNodesRequest()
 	request.Scheme = "https"
 	request.ClusterId = clusterId
 
-	response, err := client.DescribeClusterNodes(request)
-	if err != nil {
-		plugin.Logger(ctx).Error("listCsKubernetesClusterNodes", "query_error", err, "request", request)
-		return nil, err
-	}
-	for _, node := range response.Nodes {
-		d.StreamListItem(ctx, &NodeInfo{
-			ClusterId: clusterId,
-			Node:      node,
-		})
-		// This will return zero if context has been cancelled (i.e due to manual cancellation) or
-		// if there is a limit, it will return the number of rows required to reach this limit
-		if d.RowsRemaining(ctx) == 0 {
-			return nil, nil
+	pageNumber := 1
+	pageSize := 50
+	for {
+		request.QueryParams["page_number"] = fmt.Sprintf("%d", pageNumber)
+		request.QueryParams["page_size"] = fmt.Sprintf("%d", pageSize)
+
+		response, err := client.DescribeClusterNodes(request)
+		if err != nil {
+			plugin.Logger(ctx).Error("listCsKubernetesClusterNodes", "query_error", err, "request", request)
+			return nil, err
 		}
+		for _, node := range response.Nodes {
+			d.StreamListItem(ctx, &NodeInfo{
+				ClusterId: clusterId,
+				Node:      node,
+			})
+			// This will return zero if context has been cancelled (i.e due to manual cancellation) or
+			// if there is a limit, it will return the number of rows required to reach this limit
+			if d.RowsRemaining(ctx) == 0 {
+				return nil, nil
+			}
+		}
+		// If we got fewer nodes than page size, we've reached the end
+		if len(response.Nodes) < pageSize {
+			break
+		}
+		pageNumber++
 	}
 	return nil, nil
 }
