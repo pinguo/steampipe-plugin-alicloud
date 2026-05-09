@@ -12,6 +12,7 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/actiontrail"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/bssopenapi"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/cas"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/cms"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/cs"
@@ -89,6 +90,38 @@ func AutoscalingService(ctx context.Context, d *plugin.QueryData) (*ess.Client, 
 
 	// so it was not in cache - create service
 	svc, err := ess.NewClientWithOptions(region, cfg.Config, cfg.Creds)
+	if err != nil {
+		return nil, err
+	}
+
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
+	// cache the service connection
+	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
+
+	return svc, nil
+}
+
+// BssOpenApiService returns the service connection for Alicloud BSS OpenAPI service
+func BssOpenApiService(ctx context.Context, d *plugin.QueryData) (*bssopenapi.Client, error) {
+	region := GetDefaultRegion(d.Connection)
+
+	// have we already created and cached the service?
+	serviceCacheKey := fmt.Sprintf("bssopenapi-%s", region)
+	if cachedData, ok := d.ConnectionManager.Cache.Get(serviceCacheKey); ok {
+		return cachedData.(*bssopenapi.Client), nil
+	}
+
+	credCfg, err := getCredentialSessionCached(ctx, d, nil)
+	if err != nil {
+		return nil, err
+	}
+	cfg := credCfg.(*CredentialConfig)
+
+	// so it was not in cache - create service
+	svc, err := bssopenapi.NewClientWithOptions(region, cfg.Config, cfg.Creds)
 	if err != nil {
 		return nil, err
 	}

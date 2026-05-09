@@ -289,3 +289,77 @@ func (filters *QueryFilters) String() (string, error) {
 
 	return string(data), nil
 }
+
+// bssTagsToMap parses the BSS bill Tag string into a map.
+// The Tag field from BSS API is a string like: "key1:value1;key2:value2"
+func bssTagsToMap(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	tagStr, ok := d.Value.(string)
+	if !ok || tagStr == "" {
+		return nil, nil
+	}
+
+	parsed := parseBssTagString(tagStr)
+	if len(parsed) == 0 {
+		return nil, nil
+	}
+
+	turbotTagsMap := map[string]string{}
+	for _, t := range parsed {
+		turbotTagsMap[t.TagKey] = t.TagValue
+	}
+	return turbotTagsMap, nil
+}
+
+// bssSourceTags parses the BSS bill Tag string into a structured list
+// with TagKey/TagValue fields, matching the format of other tables' tags_src.
+func bssSourceTags(_ context.Context, d *transform.TransformData) (interface{}, error) {
+	tagStr, ok := d.Value.(string)
+	if !ok || tagStr == "" {
+		return nil, nil
+	}
+
+	parsed := parseBssTagString(tagStr)
+	if len(parsed) == 0 {
+		return nil, nil
+	}
+	return parsed, nil
+}
+
+type bssResourceTag struct {
+	TagKey   string
+	TagValue string
+}
+
+// parseBssTagString parses BSS tag string into structured tags.
+// BSS tag format: "key:bill_project value:ypjc" (space-separated, each pair is field:value)
+// Also supports JSON format {"key":"value"} and semicolon-separated format key:value;key:value
+func parseBssTagString(tagStr string) []bssResourceTag {
+	var tags []bssResourceTag
+
+	// Try JSON format first: {"key1":"value1","key2":"value2"}
+	if strings.HasPrefix(tagStr, "{") {
+		m := map[string]string{}
+		if err := json.Unmarshal([]byte(tagStr), &m); err == nil {
+			for k, v := range m {
+				tags = append(tags, bssResourceTag{TagKey: k, TagValue: v})
+			}
+			return tags
+		}
+	}
+
+	// BSS format: "key:bill_project value:ypjc"
+	// Each tag is represented as two space-separated tokens: "key:<tagKey> value:<tagValue>"
+	parts := strings.Fields(tagStr)
+	var currentKey string
+	for _, part := range parts {
+		if strings.HasPrefix(part, "key:") {
+			currentKey = strings.TrimPrefix(part, "key:")
+		} else if strings.HasPrefix(part, "value:") && currentKey != "" {
+			currentValue := strings.TrimPrefix(part, "value:")
+			tags = append(tags, bssResourceTag{TagKey: currentKey, TagValue: currentValue})
+			currentKey = ""
+		}
+	}
+
+	return tags
+}
