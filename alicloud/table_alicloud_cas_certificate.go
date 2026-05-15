@@ -32,6 +32,7 @@ func tableAlicloudUserCertificate(ctx context.Context) *plugin.Table {
 		},
 		GetMatrixItemFunc: BuildRegionList,
 		Columns: []*plugin.Column{
+			// ---- Original columns (keep compatible) ----
 			{
 				Name:        "name",
 				Description: "The name of the certificate.",
@@ -40,7 +41,8 @@ func tableAlicloudUserCertificate(ctx context.Context) *plugin.Table {
 			{
 				Name:        "id",
 				Description: "The ID of the certificate.",
-				Type:        proto.ColumnType_DOUBLE,
+				Type:        proto.ColumnType_INT,
+				Transform:   transform.FromField("CertificateId"),
 			},
 			{
 				Name:        "org_name",
@@ -113,6 +115,83 @@ func tableAlicloudUserCertificate(ctx context.Context) *plugin.Table {
 				Description: "The private key of the certificate, in PEM format.",
 				Type:        proto.ColumnType_STRING,
 				Hydrate:     getUserCertificate,
+			},
+
+			// ---- New columns for order/billing ----
+			{
+				Name:        "instance_id",
+				Description: "The instance ID of the certificate order, used for billing and cost allocation.",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "order_id",
+				Description: "The order ID.",
+				Type:        proto.ColumnType_INT,
+			},
+			{
+				Name:        "status",
+				Description: "The status of the certificate order (PAYED, CHECKING, CHECKED_FAIL, ISSUED, WILLEXPIRED, EXPIRED, NOTACTIVATED, REVOKED).",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "cert_type",
+				Description: "The type of the certificate (e.g FREE, DV, OV, EV).",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "domain",
+				Description: "The domain name associated with the certificate order.",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "domain_count",
+				Description: "The number of domains.",
+				Type:        proto.ColumnType_INT,
+			},
+			{
+				Name:        "domain_type",
+				Description: "The type of the domain (ONE, MULTIPLE, WILDCARD).",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "product_name",
+				Description: "The name of the certificate product.",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "algorithm",
+				Description: "The algorithm of the certificate.",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "common_name",
+				Description: "The primary domain name of the certificate.",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "serial_no",
+				Description: "The serial number of the certificate.",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "sha2",
+				Description: "The SHA-2 value of the certificate.",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "source_type",
+				Description: "The source type of the order (buy, cpack).",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "root_brand",
+				Description: "The root brand of the certificate.",
+				Type:        proto.ColumnType_STRING,
+			},
+			{
+				Name:        "resource_group_id",
+				Description: "The ID of the resource group.",
+				Type:        proto.ColumnType_STRING,
 			},
 
 			// Steampipe standard columns
@@ -228,6 +307,11 @@ func getUserCertificate(ctx context.Context, d *plugin.QueryData, h *plugin.Hydr
 		id = data
 	} else {
 		id = d.EqualsQuals["id"].GetInt64Value()
+	}
+
+	// If CertificateId is 0 (e.g. order not yet issued), skip the detail API call
+	if id == 0 {
+		return nil, nil
 	}
 
 	request := cas.CreateGetUserCertificateDetailRequest()

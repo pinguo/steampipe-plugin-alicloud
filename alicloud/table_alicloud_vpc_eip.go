@@ -174,7 +174,20 @@ func tableAlicloudVpcEip(ctx context.Context) *plugin.Table {
 				Transform:   transform.FromField("OperationLocks.LockReason"),
 			},
 
+			{
+				Name:        "tags_src",
+				Description: "A list of tags assigned to the EIP.",
+				Type:        proto.ColumnType_JSON,
+				Transform:   transform.FromField("Tags.Tag"),
+			},
+
 			// steampipe standard columns
+			{
+				Name:        "tags",
+				Description: ColumnDescriptionTags,
+				Type:        proto.ColumnType_JSON,
+				Transform:   transform.FromField("Tags.Tag").Transform(vpcTurbotTags),
+			},
 			{
 				Name:        "akas",
 				Description: ColumnDescriptionAkas,
