@@ -11,6 +11,7 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/actiontrail"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/alb"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alikafka"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/bssopenapi"
@@ -34,6 +35,42 @@ import (
 
 	"github.com/turbot/steampipe-plugin-sdk/v5/plugin"
 )
+
+// ALBService returns the service connection for Alicloud Application Load Balancer service
+func ALBService(ctx context.Context, d *plugin.QueryData) (*alb.Client, error) {
+	region := d.EqualsQualString(matrixKeyRegion)
+
+	if region == "" {
+		return nil, fmt.Errorf("region must be passed ALBService")
+	}
+
+	// have we already created and cached the service?
+	serviceCacheKey := fmt.Sprintf("alb-%s", region)
+	if cachedData, ok := d.ConnectionManager.Cache.Get(serviceCacheKey); ok {
+		return cachedData.(*alb.Client), nil
+	}
+
+	credCfg, err := getCredentialSessionCached(ctx, d, nil)
+	if err != nil {
+		return nil, err
+	}
+	cfg := credCfg.(*CredentialConfig)
+
+	// so it was not in cache - create service
+	svc, err := alb.NewClientWithOptions(region, cfg.Config, cfg.Creds)
+	if err != nil {
+		return nil, err
+	}
+
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
+	// cache the service connection
+	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
+
+	return svc, nil
+}
 
 // AliDNSService returns the service connection for Alicloud DNS service
 func AliDNSService(ctx context.Context, d *plugin.QueryData) (*alidns.Client, error) {
