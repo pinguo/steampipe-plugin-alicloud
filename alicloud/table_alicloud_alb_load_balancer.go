@@ -375,7 +375,7 @@ func albLoadBalancerTagMap(_ context.Context, d *transform.TransformData) (inter
 		tags = item.Tags
 	}
 
-	if tags == nil || len(tags) == 0 {
+	if len(tags) == 0 {
 		return nil, nil
 	}
 

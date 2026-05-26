@@ -34,6 +34,8 @@ func Plugin(ctx context.Context) *plugin.Plugin {
 			"alicloud_account":                                    tableAlicloudAccount(ctx),
 			"alicloud_action_trail":                               tableAlicloudActionTrail(ctx),
 			"alicloud_alb_load_balancer":                          tableAlicloudAlbLoadBalancer(ctx),
+			"alicloud_alb_server_group":                           tableAlicloudAlbServerGroup(ctx),
+			"alicloud_alb_server_group_server":                    tableAlicloudAlbServerGroupServer(ctx),
 			"alicloud_alidns_domain":                              tableAlicloudAlidnsDomain(ctx),
 			"alicloud_kafka_instance":                             tableAlicloudKafkaInstance(ctx),
 			"alicloud_bss_instance_bill":                          tableAlicloudBssInstanceBill(ctx),
