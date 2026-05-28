@@ -100,6 +100,9 @@ func SWASService(ctx context.Context, d *plugin.QueryData) (*swas.Client, error)
 		return nil, err
 	}
 
+	// SWAS endpoint cannot be auto-resolved for all regions, set it manually
+	svc.Domain = fmt.Sprintf("swas.%s.aliyuncs.com", region)
+
 	timeout := getClientTimeout(d)
 	svc.SetReadTimeout(timeout)
 	svc.SetConnectTimeout(timeout)

@@ -2,6 +2,7 @@ package alicloud
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/errors"
@@ -164,6 +165,7 @@ func listSwasDisks(ctx context.Context, d *plugin.QueryData, _ *plugin.HydrateDa
 
 	request := swas.CreateListDisksRequest()
 	request.Scheme = "https"
+	request.Domain = fmt.Sprintf("swas.%s.aliyuncs.com", d.EqualsQualString(matrixKeyRegion))
 	request.PageSize = requests.NewInteger(int(maxLimit))
 	request.PageNumber = requests.NewInteger(1)
 
