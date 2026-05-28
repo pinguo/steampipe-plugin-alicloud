@@ -16,6 +16,7 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alikafka"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/bssopenapi"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/cas"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/ccc"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/cms"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/cs"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/ecs"
@@ -27,6 +28,7 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/sas"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/slb"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/sts"
+	swas "github.com/aliyun/alibaba-cloud-sdk-go/services/swas-open"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/vpc"
 
 	"github.com/aliyun/alibabacloud-oss-go-sdk-v2/oss"
@@ -58,6 +60,42 @@ func ALBService(ctx context.Context, d *plugin.QueryData) (*alb.Client, error) {
 
 	// so it was not in cache - create service
 	svc, err := alb.NewClientWithOptions(region, cfg.Config, cfg.Creds)
+	if err != nil {
+		return nil, err
+	}
+
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
+	// cache the service connection
+	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
+
+	return svc, nil
+}
+
+// SWASService returns the service connection for Alicloud Simple Application Server service
+func SWASService(ctx context.Context, d *plugin.QueryData) (*swas.Client, error) {
+	region := d.EqualsQualString(matrixKeyRegion)
+
+	if region == "" {
+		return nil, fmt.Errorf("region must be passed SWASService")
+	}
+
+	// have we already created and cached the service?
+	serviceCacheKey := fmt.Sprintf("swas-%s", region)
+	if cachedData, ok := d.ConnectionManager.Cache.Get(serviceCacheKey); ok {
+		return cachedData.(*swas.Client), nil
+	}
+
+	credCfg, err := getCredentialSessionCached(ctx, d, nil)
+	if err != nil {
+		return nil, err
+	}
+	cfg := credCfg.(*CredentialConfig)
+
+	// so it was not in cache - create service
+	svc, err := swas.NewClientWithOptions(region, cfg.Config, cfg.Creds)
 	if err != nil {
 		return nil, err
 	}
@@ -230,6 +268,41 @@ func CasService(ctx context.Context, d *plugin.QueryData, region string) (*cas.C
 
 	// so it was not in cache - create service
 	svc, err := cas.NewClientWithOptions(region, cfg.Config, cfg.Creds)
+	if err != nil {
+		return nil, err
+	}
+
+	timeout := getClientTimeout(d)
+	svc.SetReadTimeout(timeout)
+	svc.SetConnectTimeout(timeout)
+
+	// cache the service connection
+	d.ConnectionManager.Cache.Set(serviceCacheKey, svc)
+
+	return svc, nil
+}
+
+// CCCService returns the service connection for Alicloud Cloud Call Center service
+func CCCService(ctx context.Context, d *plugin.QueryData) (*ccc.Client, error) {
+	region := GetDefaultRegion(d.Connection)
+
+	if region == "" {
+		return nil, fmt.Errorf("region must be passed CCCService")
+	}
+	// have we already created and cached the service?
+	serviceCacheKey := fmt.Sprintf("ccc-%s", region)
+	if cachedData, ok := d.ConnectionManager.Cache.Get(serviceCacheKey); ok {
+		return cachedData.(*ccc.Client), nil
+	}
+
+	credCfg, err := getCredentialSessionCached(ctx, d, nil)
+	if err != nil {
+		return nil, err
+	}
+	cfg := credCfg.(*CredentialConfig)
+
+	// so it was not in cache - create service
+	svc, err := ccc.NewClientWithOptions(region, cfg.Config, cfg.Creds)
 	if err != nil {
 		return nil, err
 	}
